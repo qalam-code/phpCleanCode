@@ -39,9 +39,9 @@ final class Routeur
     }
 
     /**
-     * @param callable(): mixed $action fabrique du controleur, ou
-     *        directement l'action ; elle recoit la Requete et rend une
-     *        ReponseHttp.
+     * @param callable(): callable $action fabrique du controleur ; elle
+     *        retourne une action appelable avec la Requete et qui rend une
+     *        ReponseHttp. La fabrique est appelee sans argument.
      * @param callable(): PresentateurAbstrait $presentateur fabrique du
      *        presentateur de CETTE route -- celui qui rendra aussi bien ses
      *        erreurs metier que ses pannes.
