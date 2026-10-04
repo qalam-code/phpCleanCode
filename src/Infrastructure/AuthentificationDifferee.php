@@ -11,17 +11,20 @@ use PhpCleanCode\Domain\Entite\Identite;
  *
  * NE PAS LA PRENDRE POUR UNE ELEGANCE GRATUITE. Elle repare un defaut precis.
  *
- * La racine de composition cable l'authentificateur dans chaque cas d'usage.
- * Si le construire ouvre la connexion a la base -- parce qu'il lui faut un
- * depot pour retrouver l'acteur -- alors une base injoignable fait echouer
- * l'endpoint AVANT qu'il ait pu examiner la requete. Une requete sans jeton
- * recoit alors "erreur interne" au lieu de "token introuvable" : le
- * diagnostic rendu au consommateur devient faux, et l'anomalie ne se voit
- * que le jour ou la base tombe.
+ * La racine de composition peut fournir cette enveloppe aux cas d'usage sans
+ * construire immediatement l'authentificateur reel. Si un cas d'usage
+ * n'appelle pas identifier(), la fabrique d'authentification n'est jamais
+ * executee et ses dependances ne sont pas construites par cette fabrique.
  *
- * Avec cette enveloppe, rien n'est construit tant que identifier() n'est pas
- * appele -- c'est-a-dire tant qu'un cas d'usage n'a pas vraiment besoin de
- * savoir qui appelle.
+ * Avec cette enveloppe, le vrai authentificateur n'est construit que lorsque
+ * identifier() est appele. Si un cas d'usage n'appelle jamais cette methode,
+ * sa fabrique d'authentification n'est jamais executee.
+ *
+ * Cette enveloppe ne verifie pas elle-meme le jeton. Au premier appel,
+ * l'authentificateur reel est construit avant que son identifier() soit
+ * appele. Sa construction et celle de ses dependances doivent donc rester
+ * sans effet de bord ; l'acces a la base pour retrouver l'acteur doit avoir
+ * lieu apres la verification du jeton.
  *
  * @package PhpCleanCode\Infrastructure
  */

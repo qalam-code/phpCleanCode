@@ -25,9 +25,10 @@ interface JetonInterface
     public function emettre(array $charge, int $dureeSecondes): string;
 
     /**
-     * @return array<string,mixed> la charge, si et seulement si le jeton est
-     *                             intact, bien signe et non expire.
-     * @throws ErreurMetier JETON_MALFORME, JETON_MAL_SIGNE ou JETON_EXPIRE.
+     * @return array<string,mixed> la charge si le mecanisme confirme que le
+     *                             jeton est valide et non expire.
+     * @throws ErreurMetier si le jeton est malforme, invalide ou expire ; les
+     *                      types precis dependent du mecanisme utilise.
      */
     public function verifier(string $jeton): array;
 }

@@ -6,9 +6,10 @@ namespace PhpCleanCode\Domain\Entite;
 /**
  * Le consommateur de l'API, une fois authentifie.
  *
- * SEULE SOURCE D'IDENTITE DU SYSTEME. Aucune methode ne construit une
- * Identite depuis une requete : elle ne peut venir que d'un jeton verifie ou
- * d'une authentification reussie.
+ * Dans une application, construisez cette identite a partir d'un jeton
+ * verifie ou d'une authentification reussie, jamais depuis un champ de
+ * requete. Le constructeur public ne peut pas imposer cette provenance :
+ * cette regle depend du cablage et des choix de l'application.
  *
  * Cette regle n'est pas theorique. Accepter un identifiant d'utilisateur
  * transmis dans le corps d'une requete -- et court-circuiter le jeton quand

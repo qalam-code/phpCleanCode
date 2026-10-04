@@ -13,11 +13,11 @@ use PhpCleanCode\Domain\ErreurMetier;
  * cette interface, et de rien d'autre. Il ignore s'il y a un jeton, un
  * en-tete, un cookie ou une session derriere.
  *
- * IMPLEMENTEZ-LA PARESSEUSEMENT. La racine de composition cable
- * l'authentificateur dans tous les cas d'usage ; si la construction ouvre la
- * connexion a la base, une base injoignable fait echouer l'endpoint avant
- * qu'il ait pu repondre "jeton absent" a une requete qui n'en portait pas.
- * Le diagnostic rendu au consommateur devient faux.
+ * GARDEZ LA CONSTRUCTION SANS EFFET DE BORD. La racine de composition peut
+ * fournir l'authentification aux cas d'usage sans que cette construction
+ * ouvre une connexion. Ensuite, l'implementation doit verifier le jeton
+ * avant de resoudre l'acteur en base : une requete sans jeton peut ainsi
+ * recevoir "jeton absent" sans dependre de la disponibilite de la base.
  *
  * @package PhpCleanCode\Application\Port
  */
