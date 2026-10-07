@@ -16,6 +16,16 @@ chaque projet ; les mutualiser reviendrait a mutualiser votre metier.
 
 ---
 
+## Philosophie
+
+`phpCleanCode` est un socle **léger, orienté Clean Architecture et pédagogique**. Il ne cherche pas à reproduire un framework full-stack comme Laravel ou Symfony : il rend visibles les responsabilités, les dépendances et le trajet d'une requête afin que l'utilisateur puisse comprendre le système et le faire évoluer.
+
+Ses choix privilégient les frontières explicites : les couches internes dépendent de contrats, les adaptateurs sont câblés dans une fabrique, et les exemples montrent où placer le code propre à l'application. Cette approche implique parfois plus de câblage manuel et moins de magie ; c'est un compromis assumé pour rendre l'architecture lisible.
+
+La documentation suit la même intention : elle explique non seulement **comment** utiliser une classe, mais aussi **pourquoi** elle existe, quelle règle elle protège et où se situe sa responsabilité. Commencez par [`docs/01-principes.md`](docs/01-principes.md), puis suivez le [guide de lecture](docs/README.md).
+
+---
+
 ## Les deux dossiers
 
 | Dossier      | Role                                                                 |

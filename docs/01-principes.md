@@ -1,5 +1,15 @@
 # 1. Principes
 
+## L'intention du socle
+
+`phpCleanCode` est conçu comme un socle léger **orienté Clean Architecture et pédagogique**. Son objectif n'est pas de cacher l'architecture derrière des conventions implicites, mais de rendre visibles les responsabilités et les dépendances pour que l'utilisateur puisse les comprendre.
+
+Les exemples servent de supports d'apprentissage : le domaine et les cas d'usage appartiennent à l'application; le socle fournit les mécanismes répétitifs et montre comment les brancher. Le câblage explicite dans `Fabrique` est volontaire : il permet de voir d'où viennent les dépendances et où remplacer un adaptateur.
+
+Cette lisibilité a un coût assumé : il y a parfois plus de classes et de câblage manuel qu'avec un framework full-stack riche en conventions. L'objectif est de choisir l'abstraction utile, pas d'ajouter une couche pour chaque principe. Les principes SOLID guident les décisions; ils ne remplacent pas le jugement sur le besoin réel.
+
+La suite de ce chapitre explique les règles concrètes qui matérialisent cette intention.
+
 ## 1.1 La r�gle de d�pendance
 
 Tout le reste en d�coule, et il n'y en a qu'une :

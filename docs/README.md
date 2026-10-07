@@ -3,6 +3,11 @@
 Documentation détaillée du socle : chaque couche, chaque fichier, chaque
 décision de conception.
 
+Cette documentation porte la même intention que le code : un socle léger,
+orienté Clean Architecture et pédagogique. Elle expose les choix et leurs
+compromis afin que le lecteur puisse comprendre l'architecture, pas seulement
+copier des recettes.
+
 Le `README.md` à la racine est une présentation en dix minutes. Ceci en est la
 version longue — celle qu'on ouvre quand on se demande *pourquoi* une classe est
 écrite ainsi, ou *où* poser le code qu'on est en train d'écrire.
