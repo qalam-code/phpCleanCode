@@ -25,6 +25,7 @@ final class Requete
     private $requeteUrl;
     private $entetes;
     private $corpsInvalide;
+    private $fichiers;
 
     public function __construct(
         string $methode,
@@ -32,7 +33,8 @@ final class Requete
         array $corps = [],
         array $requeteUrl = [],
         array $entetes = [],
-        bool $corpsInvalide = false
+        bool $corpsInvalide = false,
+        array $fichiers = []
     ) {
         $this->methode    = strtoupper($methode);
         $this->chemin     = $chemin;
@@ -40,6 +42,7 @@ final class Requete
         $this->requeteUrl = $requeteUrl;
         $this->entetes    = array_change_key_case($entetes, CASE_LOWER);
         $this->corpsInvalide = $corpsInvalide;
+        $this->fichiers = $fichiers;
     }
 
     public static function depuisGlobales(): self
@@ -72,7 +75,8 @@ final class Requete
             $corps,
             $_GET,
             self::entetesDuServeur(),
-            $corpsInvalide
+            $corpsInvalide,
+            self::fichiersDuServeur($_FILES)
         );
     }
 
@@ -96,6 +100,63 @@ final class Requete
     public function corpsInvalide(): bool
     {
         return $this->corpsInvalide;
+    }
+
+    /** Retourne le fichier televerse associe a un champ, ou null s'il est absent. */
+    public function fichier(string $cle)
+    {
+        return $this->fichiers[$cle] ?? null;
+    }
+
+    /** @return array<string,mixed> FichiersTeleverse ou tableaux imbriques pour les champs multiples. */
+    public function fichiers(): array
+    {
+        return $this->fichiers;
+    }
+
+    /** Convertit la structure speciale de $_FILES en objets independants de PHP. */
+    private static function fichiersDuServeur(array $fichiers): array
+    {
+        $resultat = [];
+        foreach ($fichiers as $cle => $fichier) {
+            if (!is_array($fichier)
+                || !array_key_exists('name', $fichier)
+                || !array_key_exists('type', $fichier)
+                || !array_key_exists('tmp_name', $fichier)
+                || !array_key_exists('error', $fichier)
+                || !array_key_exists('size', $fichier)
+            ) {
+                continue;
+            }
+            $resultat[$cle] = self::normaliserFichier($fichier);
+        }
+        return $resultat;
+    }
+
+    /** Recompose aussi les champs multiples name="fichiers[]". */
+    private static function normaliserFichier(array $fichier)
+    {
+        if (is_array($fichier['name'])) {
+            $resultat = [];
+            foreach ($fichier['name'] as $cle => $nom) {
+                $enfant = [];
+                foreach (['name', 'type', 'tmp_name', 'error', 'size'] as $attribut) {
+                    $enfant[$attribut] = isset($fichier[$attribut][$cle])
+                        ? $fichier[$attribut][$cle]
+                        : ($attribut === 'error' ? UPLOAD_ERR_NO_FILE : '');
+                }
+                $resultat[$cle] = self::normaliserFichier($enfant);
+            }
+            return $resultat;
+        }
+
+        return new FichierTeleverse(
+            is_string($fichier['name']) ? $fichier['name'] : '',
+            is_string($fichier['type']) ? $fichier['type'] : '',
+            is_string($fichier['tmp_name']) ? $fichier['tmp_name'] : '',
+            is_int($fichier['error']) ? $fichier['error'] : (int) $fichier['error'],
+            is_int($fichier['size']) ? $fichier['size'] : (int) $fichier['size']
+        );
     }
 
     /** @return mixed valeur du corps, puis de la query string, sinon $defaut. */

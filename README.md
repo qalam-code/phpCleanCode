@@ -14,6 +14,11 @@ déploiement, choisissez une version de PHP encore maintenue.
 Ce qui n'est **pas** ici : votre domaine et vos cas d'usage. Ils sont propres a
 chaque projet ; les mutualiser reviendrait a mutualiser votre metier.
 
+Les requêtes multipart exposent leurs fichiers via `Requete::fichier()` et
+`Requete::fichiers()`. Le socle fournit les métadonnées et le chemin temporaire
+PHP dans `FichierTeleverse` ; la validation du contenu et le stockage durable
+restent des responsabilités de l'application et de ses adaptateurs.
+
 ---
 
 ## Philosophie

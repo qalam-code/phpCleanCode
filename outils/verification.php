@@ -325,6 +325,36 @@ try {
     $_SERVER = $serveurOriginal;
 }
 
+$fichierSimple = new Requete('POST', '/fichier', [], [], [], false, [
+    'document' => new PhpCleanCode\Http\FichierTeleverse(
+        'document.pdf', 'application/pdf', '/tmp/php123', UPLOAD_ERR_OK, 42
+    ),
+]);
+$v->egal('document.pdf', $fichierSimple->fichier('document')->nomOriginal(), 'un fichier est accessible par son nom de champ');
+$v->vrai($fichierSimple->fichier('document')->estRecu(), 'UPLOAD_ERR_OK est expose sans deplacer le fichier');
+$v->egal(null, $fichierSimple->fichier('absent'), 'un champ fichier absent retourne null');
+
+$serveurOriginal = $_SERVER;
+$fichiersOriginaux = $_FILES;
+$_SERVER = ['REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/televersement'];
+$_FILES = [
+    'documents' => [
+        'name' => ['a' => 'un.pdf', 'b' => 'deux.pdf'],
+        'type' => ['a' => 'application/pdf', 'b' => 'application/pdf'],
+        'tmp_name' => ['a' => '/tmp/php-a', 'b' => '/tmp/php-b'],
+        'error' => ['a' => UPLOAD_ERR_OK, 'b' => UPLOAD_ERR_PARTIAL],
+        'size' => ['a' => 10, 'b' => 5],
+    ],
+];
+try {
+    $requeteAvecFichiers = Requete::depuisGlobales();
+    $v->egal('un.pdf', $requeteAvecFichiers->fichier('documents')['a']->nomOriginal(), '$_FILES est converti en objets pour les champs multiples');
+    $v->egal(UPLOAD_ERR_PARTIAL, $requeteAvecFichiers->fichier('documents')['b']->erreur(), 'les erreurs PHP de televersement sont preservees');
+} finally {
+    $_SERVER = $serveurOriginal;
+    $_FILES = $fichiersOriginaux;
+}
+
 // ---------------------------------------------------------------------------
 $v->section('Architecture -- dependances vers l interieur');
 

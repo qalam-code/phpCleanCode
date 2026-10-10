@@ -1,6 +1,6 @@
 # 4. La couche Http
 
-`src/Http/` � **trois fichiers**. L'entr�e de l'application : lire la requ�te,
+`src/Http/` contient aussi `FichierTeleverse`. L'entr�e de l'application : lire la requ�te,
 trouver la route, appeler, ne jamais laisser une exception s'�chapper.
 
 ---
@@ -18,7 +18,8 @@ final class Requete
         array $corps = [],
         array $requeteUrl = [],
         array $entetes = [],
-        bool $corpsInvalide = false
+        bool $corpsInvalide = false,
+        array $fichiers = []
     );
     public static function depuisGlobales(): self;
 
@@ -26,6 +27,8 @@ final class Requete
     public function chemin(): string;
     public function corps(): array;
     public function corpsInvalide(): bool;
+    public function fichier(string $cle);                  // FichierTeleverse|null|tableaux imbriques
+    public function fichiers(): array;
     public function parametre(string $cle, $defaut = null);  // corps, puis query
     public function manquants(array $cles): array;
     public function entete(string $nom);            // insensible � la casse
@@ -42,6 +45,25 @@ une `Requete` avec les valeurs qu'il veut, sans toucher `$_POST` ni simuler
 ```php
 $requete = new Requete('GET', '/facture', [], ['numero' => 'F-2026-001']);
 ```
+
+Les formulaires multipart sont exposes separement du corps :
+
+```php
+$fichier = $requete->fichier('document');
+if ($fichier !== null && $fichier->estRecu()) {
+    $nomDeclare = $fichier->nomOriginal();
+    $cheminTemporaire = $fichier->cheminTemporaire();
+    // Verifier le contenu et choisir un nom serveur avant de le stocker.
+}
+```
+
+`depuisGlobales()` convertit `$_FILES` en objets `FichierTeleverse`. Un champ
+`name="documents[]"` devient un tableau d'objets accessible avec
+`fichier('documents')`. Les noms, types MIME et tailles fournis par le client
+ne sont pas fiables ; `typeDeclare()` n'est qu'une indication. Le framework
+expose le chemin temporaire et le code d'erreur PHP, mais ne deplace ni ne
+stocke le fichier. Cette responsabilite revient a un adaptateur choisi par
+l'application et ne doit pas etre ajoutee au domaine.
 
 **Les donn�es sont rendues brutes, sans �chappement.** �chapper � l'entr�e
 corrompt ce qu'on enregistre et ne prot�ge de rien : c'est � la **sortie** �
