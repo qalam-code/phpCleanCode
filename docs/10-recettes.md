@@ -1,10 +1,10 @@
 # 10. Recettes
 
-Les gestes courants, dans l'ordre o� on les rencontre.
+Les gestes courants, dans l'ordre où on les rencontre.
 
 ---
 
-## 10.1 D�marrer un projet
+## 10.1 Démarrer un projet
 
 ```bash
 cp -r squelette /chemin/vers/mon-projet
@@ -13,12 +13,12 @@ cp .env.example .env
 php tests/architecture/equivalence.php     # doit afficher 43 conformes
 ```
 
-V�rifiez **avant** de modifier quoi que ce soit : si la suite passe, la copie est
-saine, et tout �chec ult�rieur viendra de vous.
+Vérifiez **avant** de modifier quoi que ce soit : si la suite passe, la copie est
+saine, et tout échec ultérieur viendra de vous.
 
 Puis, dans l'ordre :
 
-**1. L'espace de noms.** Remplacez `App\Exemple\` par le v�tre dans `src/`,
+**1. L'espace de noms.** Remplacez `App\Exemple\` par le vôtre dans `src/`,
 `autoload.php` et `composer.json`.
 
 ```bash
@@ -32,19 +32,19 @@ grep -rl 'App\\Exemple' . | xargs sed -i 's/App\\\\Exemple/App\\\\MonProjet/g'
 > php -r 'echo bin2hex(random_bytes(32)), PHP_EOL;'
 > ```
 
-**3. Le domaine.** Remplacez `Facture` par vos entit�s, `ErreurFacturation` par
+**3. Le domaine.** Remplacez `Facture` par vos entités, `ErreurFacturation` par
 vos types d'erreur. Supprimez ce qui ne sert pas.
 
 **4. Les routes.** Ajoutez le chemin, le service et les methodes dans routes/api.php. Reliez ensuite ce service aux fabriques du controleur et du presentateur dans src/Fabrique.php.
 
-**5. La suite d'�quivalence.** R��crivez-la au fur et � mesure : elle doit
-d�crire **votre** contrat, pas celui de la facturation.
+**5. La suite d'équivalence.** Réécrivez-la au fur et à mesure : elle doit
+décrire **votre** contrat, pas celui de la facturation.
 
 ---
 
 ## 10.2 Ajouter un endpoint
 
-Cinq fichiers, toujours les m�mes, toujours dans cet ordre. Exemple :
+Cinq fichiers, toujours les mêmes, toujours dans cet ordre. Exemple :
 `POST /annuler-facture`.
 
 ### 1. Le type d'erreur, s'il en faut un
@@ -59,7 +59,7 @@ public static function factureDejaAnnulee(string $numero): self
 }
 ```
 
-### 2. Le contrat de d�p�t, s'il manque une m�thode
+### 2. Le contrat de dépôt, s'il manque une méthode
 
 ```php
 // src/Domain/Contrat/DepotFactureInterface.php
@@ -76,9 +76,9 @@ final class AnnulerFacture
         AuthentificationInterface $authentification,
         DepotFactureInterface $factures,
         JournalInterface $journal
-    ) { /* � */ }
+    ) { /* … */ }
 
-    public function executer(string $numero)
+    public function executer(string $numero): void
     {
         if ($numero === '') {
             throw ErreurMetier::parametreManquant('numero');
@@ -98,13 +98,13 @@ final class AnnulerFacture
             throw ErreurMetier::echecEcriture('annulation de ' . $numero);
         }
 
-        // Trace obligatoire ici : d�cidez, et �crivez pourquoi.
+        // Trace obligatoire ici : décidez, et écrivez pourquoi.
         $this->journal->enregistrer($identite->id(), 'annulation', $numero);
     }
 }
 ```
 
-### 4. Le pr�sentateur � le contrat HTTP
+### 4. Le présentateur — le contrat HTTP
 
 ```php
 // src/Presentation/Presentateur/PresentateurAnnulation.php
@@ -132,7 +132,7 @@ final class PresentateurAnnulation extends PresentateurCommun
 }
 ```
 
-### 5. Le contr�leur et la route
+### 5. Le contrôleur et la route
 
 ```php
 // src/Presentation/Controleur/ControleurAnnulation.php
@@ -163,7 +163,7 @@ $this->definirService(PresentateurAnnulation::class, function () {
 });
 ```
 
-### 6. Les contr�les
+### 6. Les contrôles
 
 ```php
 // tests/architecture/equivalence.php
@@ -174,14 +174,14 @@ $v->reponseEgale(409, ['statut' => 'erreur', 'message' => 'facture deja annulee'
     $pa->traduire(ErreurFacturation::factureDejaAnnulee('F-1')), 'deja annulee');
 ```
 
-**Le pr�sentateur se teste sans rien c�bler.** C'est pour cela qu'il n'a aucune
-d�pendance.
+**Le présentateur se teste sans rien câbler.** C'est pour cela qu'il n'a aucune
+dépendance.
 
 ---
 
-## 10.3 Ajouter un d�p�t
+## 10.3 Ajouter un dépôt
 
-**1. Le contrat, dans le domaine** � nomm� selon le besoin, pas selon SQL :
+**1. Le contrat, dans le domaine** — nommé selon le besoin, pas selon SQL :
 
 ```php
 interface DepotRelanceInterface extends DepotInterface
@@ -191,7 +191,7 @@ interface DepotRelanceInterface extends DepotInterface
 }
 ```
 
-**2. L'impl�mentation, dans l'infrastructure** :
+**2. L'implémentation, dans l'infrastructure** :
 
 ```php
 final class DepotRelancePdo extends DepotPdo implements DepotRelanceInterface
@@ -199,7 +199,7 @@ final class DepotRelancePdo extends DepotPdo implements DepotRelanceInterface
     public function enRetardDepuis(int $jours): array
     {
         return array_map([$this, 'hydrater'], $this->lignes(
-            'SELECT � FROM factures WHERE statut = :statut'
+            'SELECT … FROM factures WHERE statut = :statut'
             . ' AND date_limite < DATE_SUB(NOW(), INTERVAL :jours DAY)',
             [':statut' => Facture::EN_ATTENTE, ':jours' => $jours]
         ));
@@ -207,7 +207,7 @@ final class DepotRelancePdo extends DepotPdo implements DepotRelanceInterface
 }
 ```
 
-**3. Le c�blage, m�mo�s�** :
+**3. Le câblage, mémoïsé** :
 
 ```php
 private function relances(): DepotRelanceInterface
@@ -218,8 +218,8 @@ private function relances(): DepotRelanceInterface
 }
 ```
 
-**4. Le double, dans `tests/architecture/doubles.php`** � et relisez
-l'impl�mentation r�elle avant de l'�crire.
+**4. Le double, dans `tests/architecture/doubles.php`** — et relisez
+l'implémentation réelle avant de l'écrire.
 
 ---
 
@@ -234,41 +234,41 @@ public static function quotaDepasse(int $limite): self
     return new self(self::QUOTA_DEPASSE, 'limite ' . $limite);
 }
 
-// 2. La traduction, dans CHAQUE pr�sentateur concern�
+// 2. La traduction, dans CHAQUE présentateur concerné
 case ErreurFacturation::QUOTA_DEPASSE:
     return $this->echec(429, 'erreur', 'quota depasse');
 
-// 3. Le contr�le
+// 3. Le contrôle
 $v->reponseEgale(429, ['statut' => 'erreur', 'message' => 'quota depasse'],
     $p->traduire(ErreurFacturation::quotaDepasse(100)), 'quota');
 ```
 
-> **? Un type non traduit tombe dans `default` et devient un 500.** Techniquement
-> correct, mais c'est un incident annonc� au consommateur l� o� il n'y en a pas.
-> Si vous ajoutez un type, ajoutez sa traduction dans le m�me mouvement.
+> **⚠ Un type non traduit tombe dans `default` et devient un 500.** Techniquement
+> correct, mais c'est un incident annoncé au consommateur là où il n'y en a pas.
+> Si vous ajoutez un type, ajoutez sa traduction dans le même mouvement.
 
 ---
 
-## 10.5 Changer la dur�e de vie des jetons
+## 10.5 Changer la durée de vie des jetons
 
-Une seule valeur, dans le c�blage :
+Une seule valeur, dans le câblage :
 
 ```php
 new Connecter($this->utilisateurs(), $this->jetons(), $this->journal(), 1800);
 ```
 
-Rien d'autre � toucher : `JetonJwt` ajoute `exp` � l'�mission, et le v�rifie �
+Rien d'autre à toucher : `JetonJwt` ajoute `exp` à l'émission, et le vérifie à
 chaque appel.
 
 ---
 
-## 10.6 Remplacer une impl�mentation
+## 10.6 Remplacer une implémentation
 
-C'est l'int�r�t des contrats. Pour passer de JWT � des jetons opaques en base :
+C'est l'intérêt des contrats. Pour passer de JWT à des jetons opaques en base :
 
 ```php
-// 1. �crire l'impl�mentation
-final class JetonOpaque implements JetonInterface { /* � */ }
+// 1. Écrire l'implémentation
+final class JetonOpaque implements JetonInterface { /* … */ }
 
 // 2. Changer UNE ligne dans la fabrique
 private function jetons(): JetonInterface
@@ -279,14 +279,14 @@ private function jetons(): JetonInterface
 }
 ```
 
-**Aucun cas d'usage, aucun contr�leur, aucun pr�sentateur ne change.** Ils ne
+**Aucun cas d'usage, aucun contrôleur, aucun présentateur ne change.** Ils ne
 connaissaient que `JetonInterface`.
 
 ---
 
 ## 10.7 Reprendre un projet existant
 
-L'ordre compte. Chaque �tape pr�pare la suivante.
+L'ordre compte. Chaque étape prépare la suivante.
 
 **1. Poser le filet AVANT de toucher au code.**
 
@@ -294,56 +294,55 @@ L'ordre compte. Chaque �tape pr�pare la suivante.
 cp -r phpCleanCode/outils/caracterisation mon-projet/tests/
 cd mon-projet/tests/caracterisation
 cp config.sample.php config.php   # renseigner
-cp cases.exemple.php  cases.php   # r��crire pour vos endpoints
-php run.php record                # la r�f�rence : le code AVANT
+cp cases.exemple.php  cases.php   # réécrire pour vos endpoints
+php run.php record                # la référence : le code AVANT
 ```
 
-Voir [`08-outils.md`](08-outils.md) � 8.4.
+Voir [`08-outils.md`](08-outils.md) § 8.4.
 
-**2. V�rifier la version cible.**
+**2. Vérifier la version cible.**
 
 ```bash
 outils/lint.bat C:\wamp64\bin\php\php7.0.33\php.exe src App\MonProjet 7.0 vendor\autoload.php
 ```
 
-Faites-le t�t : d�couvrir en fin de refactoring que la production refuse une
-construction que votre poste accepte co�te cher.
+Faites-le tôt : découvrir en fin de refactoring que la production refuse une
+construction que votre poste accepte coûte cher.
 
-**3. Extraire le domaine, une tranche � la fois.** Un endpoint, pas sept.
-Apr�s chaque tranche : `php run.php verify`. Doit rester vert.
+**3. Extraire le domaine, une tranche à la fois.** Un endpoint, pas sept.
+Après chaque tranche : `php run.php verify`. Doit rester vert.
 
-**4. Extraire les pr�sentateurs.** C'est l'�tape qui rend le contrat visible :
-d'un coup, les codes HTTP et les libell�s sont dans six fichiers au lieu d'�tre
-dispers�s partout.
+**4. Extraire les présentateurs.** C'est l'étape qui rend le contrat visible :
+d'un coup, les codes HTTP et les libellés sont dans six fichiers au lieu d'être
+dispersés partout.
 
-**5. �crire la suite d'�quivalence** � partir des pr�sentateurs extraits. Elle
-remplacera progressivement la caract�risation dans le travail quotidien � mille
-fois plus rapide, et ex�cutable sans serveur.
+**5. Écrire la suite d'équivalence** à partir des présentateurs extraits. Elle
+remplacera progressivement la caractérisation dans le travail quotidien — mille
+fois plus rapide, et exécutable sans serveur.
 
-**6. Garder la caract�risation** pour les bascules. Elle seule interroge le vrai
-serveur avec les vraies donn�es.
+**6. Garder la caractérisation** pour les bascules. Elle seule interroge le vrai
+serveur avec les vraies données.
 
-> **?** Ne corrigez pas les bizarreries en chemin. Une faute de frappe dans un
+> **⚠** Ne corrigez pas les bizarreries en chemin. Une faute de frappe dans un
 > message, une majuscule inattendue, un endpoint qui rend un tableau nu : **c'est
 > du contrat**. Notez-les, arbitrez-les avec les consommateurs, corrigez-les
-> plus tard et d�lib�r�ment.
+> plus tard et délibérément.
 
 ---
 
-## 10.8 V�rifier l'architecture m�caniquement
+## 10.8 Vérifier l'architecture mécaniquement
 
-Trois commandes qui r�pondent � trois questions :
+Trois commandes qui répondent à trois questions :
 
 ```bash
-# Le domaine d�pend-il de l'infrastructure ?  (doit �tre vide)
+# Le domaine dépend-il de l'infrastructure ?  (doit être vide)
 grep -rn "use .*\\\\Infrastructure\\\\" src/Domain src/Application
 
-# Quelqu'un instancie-t-il hors de la fabrique ?  (doit �tre vide)
+# Quelqu'un instancie-t-il hors de la fabrique ?  (doit être vide)
 grep -rn "new PDO\|new .*Pdo(" src/ --include="*.php" | grep -v Fabrique
 
-# Une classe �crit-elle sur la sortie ?  (seul ReponseHttp doit sortir)
+# Une classe écrit-elle sur la sortie ?  (seul ReponseHttp doit sortir)
 grep -rn "^\s*echo\|print(" src/ --include="*.php"
 ```
 
-Ajoutez-les � votre suite si vous voulez qu'elles soient tenues dans le temps.
-
+Ajoutez-les à votre suite si vous voulez qu'elles soient tenues dans le temps.

@@ -1,17 +1,17 @@
-# 11. Les sept pi�ges
+# 11. Les sept pièges
 
-Aucun n'est th�orique. Chacun a �t� rencontr� pendant le refactoring d'une API
-de paiement en production, et c'est ce qui explique pourquoi le socle est �crit
+Aucun n'est théorique. Chacun a été rencontré pendant le refactoring d'une API
+de paiement en production, et c'est ce qui explique pourquoi le socle est écrit
 comme il l'est.
 
-Ils ont un point commun, et c'est ce qui les rend co�teux : **ils passent les
+Ils ont un point commun, et c'est ce qui les rend coûteux : **ils passent les
 tests.**
 
 ---
 
-## Pi�ge 1 � Le constructeur d'exception priv�
+## Piège 1 — Le constructeur d'exception privé
 
-### Le sympt�me
+### Le symptôme
 
 ```
 PHP Fatal error: Access level to App\Paiement\Domain\ErreurMetier::__construct()
@@ -25,7 +25,7 @@ Sept endpoints, tous hors service. Pas un seul appel servi.
 ```php
 final class ErreurMetier extends Exception
 {
-    private function __construct($type, $detail)   // ? fatal sous PHP 7.0
+    private function __construct($type, $detail)   // ← fatal sous PHP 7.0
     {
         parent::__construct($detail);
         $this->type = $type;
@@ -33,56 +33,56 @@ final class ErreurMetier extends Exception
 }
 ```
 
-L'intention �tait bonne : forcer le passage par les fabriques nomm�es. PHP
-l'interdit � une m�thode qui en red�finit une autre ne peut pas r�duire sa
-visibilit�, et `Exception::__construct()` est publique.
+L'intention était bonne : forcer le passage par les fabriques nommées. PHP
+l'interdit — une méthode qui en redéfinit une autre ne peut pas réduire sa
+visibilité, et `Exception::__construct()` est publique.
 
-**Le refus est � la d�claration, pas � l'usage.** La classe ne se charge pas ;
-tout ce qui l'importe tombe avec elle. Et comme `ErreurMetier` est import�e par
-les sept endpoints, l'API enti�re �tait morte.
+**Le refus est à la déclaration, pas à l'usage.** La classe ne se charge pas ;
+tout ce qui l'importe tombe avec elle. Et comme `ErreurMetier` est importée par
+les sept endpoints, l'API entière était morte.
 
 ### Pourquoi rien ne l'avait vu
 
 | Outil | Pourquoi il ne voit rien |
 |---|---|
-| `php -l` | ne v�rifie que la **syntaxe** ; ne d�clare pas les classes |
-| 251 contr�les verts | tournaient sous **PHP 8.4**, qui a rel�ch� la r�gle pour les constructeurs |
-| revue de code | la construction est parfaitement l�gale sous PHP 8 |
+| `php -l` | ne vérifie que la **syntaxe** ; ne déclare pas les classes |
+| 251 contrôles verts | tournaient sous **PHP 8.4**, qui a relâché la règle pour les constructeurs |
+| revue de code | la construction est parfaitement légale sous PHP 8 |
 
-C'est l'asym�trie qui tue : poste de d�veloppement en PHP 8, production en
+C'est l'asymétrie qui tue : poste de développement en PHP 8, production en
 PHP 7.0.
 
 ### Ce que le socle en fait
 
-**1. Le constructeur est public, avec le commentaire qui explique pourquoi** �
-sinon quelqu'un le � corrigera � dans six mois.
+**1. Le constructeur est public, avec le commentaire qui explique pourquoi** —
+sinon quelqu'un le « corrigera » dans six mois.
 
-**2. `outils/compat.php`** d�clare toutes les classes et laisse PHP se plaindre.
+**2. `outils/compat.php`** déclare toutes les classes et laisse PHP se plaindre.
 C'est ce que `php -l` ne peut pas faire.
 
-**3. `outils/verification.php`** applique la r�gle stricte **par r�flexion**,
-quelle que soit la version qui l'ex�cute :
+**3. `outils/verification.php`** applique la règle stricte **par réflexion**,
+quelle que soit la version qui l'exécute :
 
 ```php
 $constructeur = (new ReflectionClass(ErreurMetier::class))->getConstructor();
-$v->vrai($constructeur !== null && $constructeur->isPublic(), '�');
+$v->vrai($constructeur !== null && $constructeur->isPublic(), '…');
 ```
 
-C'est le seul contr�le qui prot�ge depuis un poste plus r�cent que la
+C'est le seul contrôle qui protège depuis un poste plus récent que la
 production.
 
-### La le�on g�n�rale
+### La leçon générale
 
 > **Une suite de tests verte sous une version de PHP ne prouve rien pour une
 > autre.** Lancez `lint` avec le binaire de production.
 
 ---
 
-## Pi�ge 2 � La connexion ouverte trop t�t
+## Piège 2 — La connexion ouverte trop tôt
 
-### Le sympt�me
+### Le symptôme
 
-Base indisponible. Une requ�te **sans en-t�te `Authorization`** re�oit :
+Base indisponible. Une requête **sans en-tête `Authorization`** reçoit :
 
 ```json
 {"statut":"erreur","message":"erreur interne"}
@@ -98,8 +98,8 @@ Le client cherche une panne chez lui ; il lui manquait juste un jeton.
 
 ### La cause
 
-La racine de composition c�blait l'authentificateur dans tous les cas d'usage.
-Le construire exigeait un d�p�t, donc la connexion :
+La racine de composition câblait l'authentificateur dans tous les cas d'usage.
+Le construire exigeait un dépôt, donc la connexion :
 
 ```php
 public function authentificateur()
@@ -107,32 +107,32 @@ public function authentificateur()
     return new Authentificateur(
         $this->requete(),
         $this->jetons(),
-        new DepotUtilisateurPdo($this->connexion()->pdo())   // ? ouvre la socket
+        new DepotUtilisateurPdo($this->connexion()->pdo())   // ← ouvre la socket
     );
 }
 ```
 
-L'endpoint �chouait **avant** d'avoir regard� la requ�te.
+L'endpoint échouait **avant** d'avoir regardé la requête.
 
 ### Pourquoi rien ne l'avait vu
 
 Les tests travaillaient avec des doubles : aucune connexion, donc aucune
-ouverture pr�matur�e. Le d�faut n'existe que lorsque la base est injoignable �
-c'est-�-dire jamais, en test.
+ouverture prématurée. Le défaut n'existe que lorsque la base est injoignable —
+c'est-à-dire jamais, en test.
 
-Il a �t� trouv� par une fumigation : lancer l'API avec un DSN volontairement
-faux, et regarder ce qu'elle r�pond.
+Il a été trouvé par une fumigation : lancer l'API avec un DSN volontairement
+faux, et regarder ce qu'elle répond.
 
 ### Ce que le socle en fait
 
-**Deux niveaux de paresse superpos�s** :
+**Deux niveaux de paresse superposés** :
 
 | Classe | Ce qu'elle retarde |
 |---|---|
 | `FabriqueConnexion` | la socket, jusqu'au premier `pdo()` |
 | `AuthentificationDifferee` | la construction de l'authentificateur, jusqu'au premier `identifier()` |
 
-Et la v�rification, de bout en bout :
+Et la vérification, de bout en bout :
 
 ```
 JWT_SECRET=x DB_HOTE=255.255.255.255 php -S 127.0.0.1:8000 -t public public/index.php
@@ -140,82 +140,82 @@ curl "http://127.0.0.1:8000/facture?numero=F-1"
 # 400 {"statut":"erreur","message":"token introuvable"}
 ```
 
-### La le�on g�n�rale
+### La leçon générale
 
-> **C�bler n'est pas travailler.** La racine de composition assemble des objets ;
+> **Câbler n'est pas travailler.** La racine de composition assemble des objets ;
 > elle n'ouvre rien, n'appelle rien, ne lit rien.
 
 ---
 
-## Pi�ge 3 � Le pr�sentateur unique
+## Piège 3 — Le présentateur unique
 
-### Le sympt�me
+### Le symptôme
 
-Base indisponible. **Tous** les endpoints r�pondent :
+Base indisponible. **Tous** les endpoints répondent :
 
 ```json
 {"statut":"erreur","message":"identifiants invalides"}
 ```
 
-Les consommateurs ont v�rifi� leurs identifiants, les ont r�g�n�r�s, ont ouvert
-un ticket. Le probl�me �tait ailleurs.
+Les consommateurs ont vérifié leurs identifiants, les ont régénérés, ont ouvert
+un ticket. Le problème était ailleurs.
 
 ### La cause
 
-Le point d'entr�e attrapait tout et rendait l'erreur avec **un pr�sentateur de
-secours unique** � celui de la connexion, qui traduit `IDENTIFIANTS_INVALIDES`
+Le point d'entrée attrapait tout et rendait l'erreur avec **un présentateur de
+secours unique** — celui de la connexion, qui traduit `IDENTIFIANTS_INVALIDES`
 en 403.
 
 ```php
 try {
-    // c�blage + ex�cution
+    // câblage + exécution
 } catch (Throwable $e) {
-    return $this->presentateurConnexion->traduire($e);   // ? toujours le m�me
+    return $this->presentateurConnexion->traduire($e);   // ← toujours le même
 }
 ```
 
 ### Ce que le socle en fait
 
-**Chaque route porte son propre pr�sentateur** :
+**Chaque route porte son propre présentateur** :
 
 ```php
 $routeur->ajouter(
     'facture',
-    function () { /* le contr�leur */ },
-    function () { return new PresentateurFacture(); },   // ? celui de CETTE route
+    function () { /* le contrôleur */ },
+    function () { return new PresentateurFacture(); },   // ← celui de CETTE route
     ['GET']
 );
 ```
 
-`Aiguillage` construit le pr�sentateur **avant** le `try`, puis ex�cute dedans :
-une panne de c�blage est rendue au format de l'endpoint appel�.
+`Aiguillage` construit le présentateur **avant** le `try`, puis exécute dedans :
+une panne de câblage est rendue au format de l'endpoint appelé.
 
-Le pr�sentateur de secours, lui, ne sert qu'aux erreurs qui ne concernent aucune
-route � chemin inconnu, m�thode refus�e � et n'a **aucune d�pendance**, donc rien
-qui puisse �chouer � son tour.
+Le présentateur de secours, lui, ne sert qu'aux erreurs qui ne concernent aucune
+route — chemin inconnu, méthode refusée — et n'a **aucune dépendance**, donc rien
+qui puisse échouer à son tour.
 
-Un contr�le d'�quivalence le v�rifie : une route dont le c�blage l�ve est rendue
-en 500 par son propre pr�sentateur, et le message technique ne fuit pas.
+Un contrôle d'équivalence le vérifie : une route dont le câblage lève est rendue
+en 500 par son propre présentateur, et le message technique ne fuit pas.
 
-### La le�on g�n�rale
+### La leçon générale
 
 > **Un message d'erreur est une information de diagnostic.** S'il est faux, il
 > envoie tout le monde chercher au mauvais endroit.
 
 ---
 
-## Pi�ge 4 � Le double qui ment
+## Piège 4 — Le double qui ment
 
-### Le sympt�me
+### Le symptôme
 
 Aucun. C'est le pire des quatre premiers.
 
 Un endpoint avait un chemin d'erreur `403 {"message": "erreur sauvegarde action"}`,
-test�, vert, document�. **Il n'avait jamais pu se produire en production.**
+testé, vert, documenté. **Il n'avait jamais pu se produire en production.**
 
 ### La cause
 
-Le double de journal levait une exception en cas d'�chec :
+Le double de journal levait une exception en cas d'échec :
 
 ```php
 class JournalFactice
@@ -223,63 +223,63 @@ class JournalFactice
     public function enregistrer($acteur, $action)
     {
         if (!$this->reussit) {
-            throw new RuntimeException('echec');   // ? le vrai d�p�t ne l�ve JAMAIS
+            throw new RuntimeException('echec');   // ← le vrai dépôt ne lève JAMAIS
         }
     }
 }
 ```
 
-Le d�p�t r�el, lui, attrapait tout et retournait sans rien dire. Le cas d'usage
-avait donc un `catch` qui ne pouvait jamais se d�clencher, et un message d'erreur
+Le dépôt réel, lui, attrapait tout et retournait sans rien dire. Le cas d'usage
+avait donc un `catch` qui ne pouvait jamais se déclencher, et un message d'erreur
 qui ne pouvait jamais sortir.
 
-Une branche enti�re de code : test�e, verte, morte.
+Une branche entière de code : testée, verte, morte.
 
 ### Ce que le socle en fait
 
-**Le contrat tranche, pas l'impl�mentation.** `JournalInterface::enregistrer()`
-rend un `bool` et **ne l�ve jamais** � c'est �crit dans l'interface, appliqu� par
-`JournalPdo`, et respect� par `JournalFactice`.
+**Le contrat tranche, pas l'implémentation.** `JournalInterface::enregistrer()`
+rend un `bool` et **ne lève jamais** — c'est écrit dans l'interface, appliqué par
+`JournalPdo`, et respecté par `JournalFactice`.
 
-L'avertissement est en t�te du double, l� o� quelqu'un le lira :
+L'avertissement est en tête du double, là où quelqu'un le lira :
 
-> *Un double qui se comporte autrement que l'objet r�el rend les tests verts et
-> la production fausse. Avant d'�crire un double, relisez l'impl�mentation
-> r�elle.*
+> *Un double qui se comporte autrement que l'objet réel rend les tests verts et
+> la production fausse. Avant d'écrire un double, relisez l'implémentation
+> réelle.*
 
-Le contr�le correspondant v�rifie le comportement du double lui-m�me :
+Le contrôle correspondant vérifie le comportement du double lui-même :
 
 ```php
 $journal->reussit = false;
-$v->egal(false, $journal->enregistrer(1, 'x'), 'le journal rend false et NE L�VE PAS');
+$v->egal(false, $journal->enregistrer(1, 'x'), 'le journal rend false et NE LÈVE PAS');
 ```
 
-### La le�on g�n�rale
+### La leçon générale
 
-> **Un double est une hypoth�se sur le r�el.** Une hypoth�se fausse produit des
+> **Un double est une hypothèse sur le réel.** Une hypothèse fausse produit des
 > tests verts sur du code mort.
 
 ---
 
-## Pi�ge 5 � Le message technique qui fuit
+## Piège 5 — Le message technique qui fuit
 
-### Le sympt�me
+### Le symptôme
 
 ```json
 {"statut":"erreur","message":"SQLSTATE[HY000] [2002] Connection refused"}
 ```
 
-Le consommateur apprend le moteur de base, l'h�te, le port � et, selon
+Le consommateur apprend le moteur de base, l'hôte, le port — et, selon
 l'erreur, l'utilisateur SQL.
 
-Variante plus discr�te, rencontr�e aussi :
+Variante plus discrète, rencontrée aussi :
 
 ```json
 {"statut":"erreur","statut":"Impossible d'obtenir le verrou external_api_token_lock"}
 ```
 
-Aucune donn�e sensible, mais le nom interne d'un verrou : de quoi cartographier
-l'impl�mentation, et de quoi laisser croire � une erreur de la part de l'appelant.
+Aucune donnée sensible, mais le nom interne d'un verrou : de quoi cartographier
+l'implémentation, et de quoi laisser croire à une erreur de la part de l'appelant.
 
 ### La cause
 
@@ -287,49 +287,49 @@ Un `catch` qui relaie `$e->getMessage()` au lieu de traduire.
 
 ### Ce que le socle en fait
 
-**La r�gle est inscrite dans `PresentateurAbstrait`** :
+**La règle est inscrite dans `PresentateurAbstrait`** :
 
-> *Un pr�sentateur ne laisse jamais passer le message d'une exception technique.
+> *Un présentateur ne laisse jamais passer le message d'une exception technique.
 > Traduisez, ne relayez pas.*
 
 `PresentateurCommun` traduit `ECHEC_ECRITURE` et `ECHEC_JOURNALISATION` en
-`panne()` � le d�tail reste dans `getMessage()`, pour le journal.
+`panne()` — le détail reste dans `getMessage()`, pour le journal.
 
-**Une seule exception, assum�e** : `PARAMETRE_MANQUANT` laisse passer son d�tail,
-parce qu'il nomme les param�tres absents. C'est une information utile �
-l'appelant, qui ne r�v�le rien du syst�me � et elle est compos�e par une fabrique
-nomm�e, pas par une couche technique.
+**Une seule exception, assumée** : `PARAMETRE_MANQUANT` laisse passer son détail,
+parce qu'il nomme les paramètres absents. C'est une information utile à
+l'appelant, qui ne révèle rien du système — et elle est composée par une fabrique
+nommée, pas par une couche technique.
 
-Deux contr�les d'�quivalence v�rifient qu'aucun `SQLSTATE` n'appara�t dans un
-corps de r�ponse.
+Deux contrôles d'équivalence vérifient qu'aucun `SQLSTATE` n'apparaît dans un
+corps de réponse.
 
-### La le�on g�n�rale
+### La leçon générale
 
-> **Le consommateur ne doit pas conna�tre les d�tails d'impl�mentation.** Ni le
-> moteur, ni l'h�te, ni le nom d'un verrou.
+> **Le consommateur ne doit pas connaître les détails d'implémentation.** Ni le
+> moteur, ni l'hôte, ni le nom d'un verrou.
 
 ---
 
-## Pi�ge 6 � Les tables non pr�fix�es
+## Piège 6 — Les tables non préfixées
 
-### Le sympt�me
+### Le symptôme
 
-Une copie de d�veloppement qui lit � et �crit � en production. Sans erreur, sans
+Une copie de développement qui lit — et écrit — en production. Sans erreur, sans
 avertissement.
 
 ### La cause
 
-Sur 61 requ�tes, 42 nommaient leur base (`flexeau_db.factures`) et **19 ne la
-nommaient pas** (`factures`). Ces 19 s'adressaient � la base par d�faut du compte
-MySQL, qui n'a rien � voir avec ce que le code croit ouvrir.
+Sur 61 requêtes, 42 nommaient leur base (`flexeau_db.factures`) et **19 ne la
+nommaient pas** (`factures`). Ces 19 s'adressaient à la base par défaut du compte
+MySQL, qui n'a rien à voir avec ce que le code croit ouvrir.
 
-Dupliquer le projet et changer le DSN ne suffit donc pas : les 42 requ�tes
-qualifi�es partent vers la base de d�veloppement, les 19 autres vers la
+Dupliquer le projet et changer le DSN ne suffit donc pas : les 42 requêtes
+qualifiées partent vers la base de développement, les 19 autres vers la
 production. Le pire des deux mondes.
 
 ### Ce que le socle en fait
 
-**Un `USE` explicite, juste apr�s la connexion** :
+**Un `USE` explicite, juste après la connexion** :
 
 ```php
 $pdo = new PDO($dsn, $utilisateur, $motDePasse, $options);
@@ -338,45 +338,45 @@ if ($this->base !== null) {
 }
 ```
 
-Les requ�tes non qualifi�es suivent alors la m�me base que les autres. Ce n'est
-pas une excuse pour ne pas qualifier � c'est le filet pour le jour o� l'on
+Les requêtes non qualifiées suivent alors la même base que les autres. Ce n'est
+pas une excuse pour ne pas qualifier — c'est le filet pour le jour où l'on
 oublie.
 
-> **?** Le filet ne couvre que les connexions ouvertes par `FabriqueConnexion`.
-> Un script d'analyse qui ouvre la sienne doit �mettre le m�me `USE`.
+> **⚠** Le filet ne couvre que les connexions ouvertes par `FabriqueConnexion`.
+> Un script d'analyse qui ouvre la sienne doit émettre le même `USE`.
 
-### La le�on g�n�rale
+### La leçon générale
 
-> **Ce qui n'est pas explicite est d�cid� par la configuration du serveur.** Et
-> la configuration du serveur n'est pas dans votre d�p�t.
+> **Ce qui n'est pas explicite est décidé par la configuration du serveur.** Et
+> la configuration du serveur n'est pas dans votre dépôt.
 
 ---
 
-## Pi�ge 7 � L'ordre des cl�s JSON
+## Piège 7 — L'ordre des clés JSON
 
-### Le sympt�me
+### Le symptôme
 
-Aucun de votre c�t�. Un consommateur se casse, et vous n'avez � rien chang� �.
+Aucun de votre côté. Un consommateur se casse, et vous n'avez « rien changé ».
 
 ### La cause
 
 ```php
 // avant
 return ['statut' => 'succes', 'token' => $jeton, 'expire_dans' => 3600];
-// apr�s un � rangement �
+// après un « rangement »
 return ['token' => $jeton, 'statut' => 'succes', 'expire_dans' => 3600];
 ```
 
-`json_encode` respecte l'ordre du tableau. Un client �crit � la main � parseur
-maison, expression r�guli�re, comparaison de cha�ne compl�te � s'en aper�oit.
+`json_encode` respecte l'ordre du tableau. Un client écrit à la main — parseur
+maison, expression régulière, comparaison de chaîne complète — s'en aperçoit.
 
-**On ne peut pas savoir qui fait �a.** Sur une API consomm�e par plusieurs
-services tiers dont certains ont dix ans, l'hypoth�se prudente est : quelqu'un le
+**On ne peut pas savoir qui fait ça.** Sur une API consommée par plusieurs
+services tiers dont certains ont dix ans, l'hypothèse prudente est : quelqu'un le
 fait.
 
 ### Ce que le socle en fait
 
-**`ReponseHttp` documente la r�gle**, et `Verificateur::reponseEgale()` la
+**`ReponseHttp` documente la règle**, et `Verificateur::reponseEgale()` la
 surveille :
 
 ```php
@@ -384,33 +384,33 @@ $v->egal(array_keys($corpsAttendu), array_keys($obtenue->corps()),
     $libelle . ' -- cles et ordre');
 ```
 
-Trois contr�les sont produits par appel : le code, les cl�s **et leur ordre**, le
-contenu. Une r�organisation de code qui change l'ordre fait rougir la suite.
+Trois contrôles sont produits par appel : le code, les clés **et leur ordre**, le
+contenu. Une réorganisation de code qui change l'ordre fait rougir la suite.
 
-### La le�on g�n�rale
+### La leçon générale
 
 > **Le contrat d'une API, ce n'est pas seulement ce qu'elle rend : c'est aussi
-> comment.** Codes HTTP, noms de cl�s, ordre des cl�s, et jusqu'aux fautes de
+> comment.** Codes HTTP, noms de clés, ordre des clés, et jusqu'aux fautes de
 > frappe des messages.
 
 ---
 
 ## Ce qu'ils ont en commun
 
-| Pi�ge | Passe les tests parce que� |
+| Piège | Passe les tests parce que… |
 |---|---|
-| 1. Constructeur priv� | les tests tournent sous une autre version de PHP |
-| 2. Connexion trop t�t | les tests n'ont pas de base � faire tomber |
-| 3. Pr�sentateur unique | les tests ne font pas �chouer le c�blage |
-| 4. Double qui ment | le double est l'hypoth�se, et elle est fausse |
-| 5. Message qui fuit | personne ne v�rifie ce qui **ne doit pas** appara�tre |
-| 6. Tables non pr�fix�es | les tests tournent sur une seule base |
-| 7. Ordre des cl�s | personne ne compare l'ordre |
+| 1. Constructeur privé | les tests tournent sous une autre version de PHP |
+| 2. Connexion trop tôt | les tests n'ont pas de base à faire tomber |
+| 3. Présentateur unique | les tests ne font pas échouer le câblage |
+| 4. Double qui ment | le double est l'hypothèse, et elle est fausse |
+| 5. Message qui fuit | personne ne vérifie ce qui **ne doit pas** apparaître |
+| 6. Tables non préfixées | les tests tournent sur une seule base |
+| 7. Ordre des clés | personne ne compare l'ordre |
 
-Aucun ne se voit en lisant le code, et aucun ne se voit en lan�ant une suite
-ordinaire. Ils se voient quand on **v�rifie l'absence** � pas d'exception qui
-fuit, pas de connexion ouverte, pas de `SQLSTATE` dans la r�ponse, pas de cl�
-d�plac�e.
+Aucun ne se voit en lisant le code, et aucun ne se voit en lançant une suite
+ordinaire. Ils se voient quand on **vérifie l'absence** — pas d'exception qui
+fuit, pas de connexion ouverte, pas de `SQLSTATE` dans la réponse, pas de clé
+déplacée.
 
+C'est ce que font les 36 contrôles de `verification.php` et les 43 du squelette.
 C'est ce que font les 55 contrôles de `verification.php` (57 avec PDO SQLite) et les 53 du squelette.
-

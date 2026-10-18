@@ -1,10 +1,10 @@
 # 3. La couche Infrastructure
 
-`src/Infrastructure/` � **six fichiers**. Tout ce qui parle au monde ext�rieur :
-base de donn�es, cryptographie, horloge.
+`src/Infrastructure/` — **six fichiers**. Tout ce qui parle au monde extérieur :
+base de données, cryptographie, horloge.
 
-C'est la seule couche qui a le droit de conna�tre PDO. Elle d�pend du domaine
-(elle impl�mente ses contrats) ; le domaine ne la conna�t pas.
+C'est la seule couche qui a le droit de connaître PDO. Elle dépend du domaine
+(elle implémente ses contrats) ; le domaine ne la connaît pas.
 
 ---
 
@@ -19,7 +19,7 @@ final class FabriqueConnexion
         string $dsn,
         string $utilisateur,
         string $motDePasse,
-        $base = null,
+        ?string $base = null,
         array $options = []
     );
     public function pdo(): PDO;          // @throws RuntimeException
@@ -27,37 +27,37 @@ final class FabriqueConnexion
 }
 ```
 
-**R�le** � Une connexion PDO unique, ouverte au dernier moment.
+**Rôle** — Une connexion PDO unique, ouverte au dernier moment.
 
-**Pourquoi paresseuse** � Tant que personne n'appelle `pdo()`, aucune socket
-n'est ouverte. La racine de composition peut donc c�bler toute l'application �
-d�p�ts, journal, authentification � **sans toucher la base**. Un endpoint qui
-refuse une requ�te malform�e r�pond sans avoir jamais consult� le serveur.
+**Pourquoi paresseuse** — Tant que personne n'appelle `pdo()`, aucune socket
+n'est ouverte. La racine de composition peut donc câbler toute l'application —
+dépôts, journal, authentification — **sans toucher la base**. Un endpoint qui
+refuse une requête malformée répond sans avoir jamais consulté le serveur.
 
-C'est ce qui permet � une requ�te sans jeton de recevoir � token introuvable �
-m�me quand la base est morte, au lieu d'une panne g�n�rique.
+C'est ce qui permet à une requête sans jeton de recevoir « token introuvable »
+même quand la base est morte, au lieu d'une panne générique.
 
-**Le param�tre `$base` est un filet de s�curit�.** S'il est fourni, un
-`USE \`base\`` explicite est �mis juste apr�s la connexion. La connexion n'est
-conserv�e qu'apr�s son succ�s : un �chec ne peut pas laisser r�utiliser la base
-par d�faut du compte.
+**Le paramètre `$base` est un filet de sécurité.** S'il est fourni, un
+`USE \`base\`` explicite est émis juste après la connexion. La connexion n'est
+conservée qu'après son succès : un échec ne peut pas laisser réutiliser la base
+par défaut du compte.
 
-> **?** D�s qu'une seule requ�te du projet nomme une table sans pr�fixer sa
-> base, c'est la base par d�faut du compte MySQL qui d�cide � et une copie de
-> d�veloppement se met � lire **et �crire** en production sans qu'aucun test ne
-> le signale. Voir [`11-pieges.md`](11-pieges.md), pi�ge n� 6.
+> **⚠** Dès qu'une seule requête du projet nomme une table sans préfixer sa
+> base, c'est la base par défaut du compte MySQL qui décide — et une copie de
+> développement se met à lire **et écrire** en production sans qu'aucun test ne
+> le signale. Voir [`11-pieges.md`](11-pieges.md), piège n° 6.
 
-**Les options par d�faut**, �crasables :
+**Les options par défaut**, écrasables :
 
 ```php
-PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION   // �chouer bruyamment
-PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC         // pas de doublons num�riques
-PDO::ATTR_EMULATE_PREPARES   => false                    // vraies requ�tes pr�par�es
+PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION   // échouer bruyamment
+PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC         // pas de doublons numériques
+PDO::ATTR_EMULATE_PREPARES   => false                    // vraies requêtes préparées
 ```
 
-`EMULATE_PREPARES => false` compte : avec l'�mulation, c'est PDO qui interpole
-les valeurs dans la cha�ne SQL, et la protection contre l'injection d�pend alors
-du bon r�glage de l'encodage.
+`EMULATE_PREPARES => false` compte : avec l'émulation, c'est PDO qui interpole
+les valeurs dans la chaîne SQL, et la protection contre l'injection dépend alors
+du bon réglage de l'encodage.
 
 **L'exception est retraduite** :
 
@@ -67,7 +67,7 @@ catch (PDOException $e) {
 }
 ```
 
-Le message de PDO contient l'h�te, le port et parfois l'utilisateur. Il ne doit
+Le message de PDO contient l'hôte, le port et parfois l'utilisateur. Il ne doit
 jamais remonter au consommateur. L'original reste accessible par
 `getPrevious()`, pour le journal.
 
@@ -77,9 +77,9 @@ jamais remonter au consommateur. L'original reste accessible par
 $connexion = new FabriqueConnexion(
     'mysql:host=127.0.0.1;dbname=exemple;charset=utf8mb4',
     'exemple', $motDePasse,
-    'exemple'          // ? le USE explicite
+    'exemple'          // ← le USE explicite
 );
-// rien n'est ouvert � ce stade
+// rien n'est ouvert à ce stade
 $connexion->estOuverte();   // false
 ```
 
@@ -96,41 +96,41 @@ abstract class DepotPdo
 
     final protected function pdo(): PDO;
     final protected function executer(string $sql, array $parametres = []): PDOStatement;
-    final protected function uneLigne(string $sql, array $parametres = []);
+    final protected function uneLigne(string $sql, array $parametres = []): ?array;
     final protected function lignes(string $sql, array $parametres = []): array;
     final protected function scalaire(string $sql, array $parametres = []);   // mixed|null
 }
 ```
 
-**R�le** � Socle commun des d�p�ts SQL.
+**Rôle** — Socle commun des dépôts SQL.
 
-**Pourquoi pas de CRUD** � Une classe m�re qui offrirait `find()`, `save()` et
-`delete()` imposerait une table par entit� et une cl� primaire nomm�e `id`, ce
-qui est faux d�s la premi�re base h�rit�e. Elle fournit ce qui se r�p�te
-vraiment � pr�parer, ex�cuter, ramener une ligne ou un scalaire � et rien de
+**Pourquoi pas de CRUD** — Une classe mère qui offrirait `find()`, `save()` et
+`delete()` imposerait une table par entité et une clé primaire nommée `id`, ce
+qui est faux dès la première base héritée. Elle fournit ce qui se répète
+vraiment — préparer, exécuter, ramener une ligne ou un scalaire — et rien de
 plus.
 
-**La connexion arrive par la fabrique, jamais par un PDO d�j� ouvert.** C'est ce
-qui garde la paresse jusqu'� la premi�re requ�te r�ellement ex�cut�e.
+**La connexion arrive par la fabrique, jamais par un PDO déjà ouvert.** C'est ce
+qui garde la paresse jusqu'à la première requête réellement exécutée.
 
-**Tous les helpers sont `final protected`** : un d�p�t les utilise, personne ne
-les red�finit, et aucun code ext�rieur n'acc�de au PDO.
+**Tous les helpers sont `final protected`** : un dépôt les utilise, personne ne
+les redéfinit, et aucun code extérieur n'accède au PDO.
 
-> **? Toujours passer par `$parametres`.** Concat�ner une valeur dans `$sql`,
-> m�me � s�re � parce qu'elle vient d'un entier, est la porte d'entr�e des
-> injections SQL. Les noms de tables et de colonnes, eux, ne peuvent pas �tre
-> li�s : s'ils sont dynamiques, validez-les contre une liste blanche.
+> **⚠ Toujours passer par `$parametres`.** Concaténer une valeur dans `$sql`,
+> même « sûre » parce qu'elle vient d'un entier, est la porte d'entrée des
+> injections SQL. Les noms de tables et de colonnes, eux, ne peuvent pas être
+> liés : s'ils sont dynamiques, validez-les contre une liste blanche.
 
 **`uneLigne()` et `scalaire()` rendent `null`, pas `false`.** PDO renvoie
-`false` quand il n'y a pas de r�sultat, ce qui se confond avec une valeur `0` ou
-une cha�ne vide l�gitime. La normalisation en `null` supprime cette ambigu�t�.
+`false` quand il n'y a pas de résultat, ce qui se confond avec une valeur `0` ou
+une chaîne vide légitime. La normalisation en `null` supprime cette ambiguïté.
 
 **Utilisation**
 
 ```php
 final class DepotFacturePdo extends DepotPdo implements DepotFactureInterface
 {
-    public function trouverParNumero(string $numero)
+    public function trouverParNumero(string $numero): ?Facture
     {
         $ligne = $this->uneLigne(
             'SELECT numero, montant_centimes, statut, date_emission'
@@ -142,9 +142,9 @@ final class DepotFacturePdo extends DepotPdo implements DepotFactureInterface
 }
 ```
 
-**La m�thode `hydrater()` est la fronti�re.** Au-dessus d'elle on parle en
+**La méthode `hydrater()` est la frontière.** Au-dessus d'elle on parle en
 `Facture` ; en dessous, en lignes de table. Elle convertit aussi les types,
-puisque PDO rend des cha�nes m�me pour les colonnes num�riques.
+puisque PDO rend des chaînes même pour les colonnes numériques.
 
 ---
 
@@ -161,46 +161,46 @@ final class JetonJwt implements JetonInterface
 }
 ```
 
-**R�le** � JWT sign� en HS256, sans d�pendance externe.
+**Rôle** — JWT signé en HS256, sans dépendance externe.
 
-**Format** � Trois segments en base64url s�par�s par des points : ent�te, charge,
+**Format** — Trois segments en base64url séparés par des points : entête, charge,
 signature. La signature couvre `entete.charge` ; changer un octet de l'un ou de
 l'autre l'invalide.
 
-**Trois pi�ges, tous �vit�s ici** :
+**Trois pièges, tous évités ici** :
 
-**1. L'algorithme annonc� par le jeton n'est jamais consult�.** Une biblioth�que
-qui lit `alg` dans l'ent�te accepte un jeton disant `"alg":"none"` �
-c'est-�-dire non sign�. HS256 est impos�, en dur.
+**1. L'algorithme annoncé par le jeton n'est jamais consulté.** Une bibliothèque
+qui lit `alg` dans l'entête accepte un jeton disant `"alg":"none"` —
+c'est-à-dire non signé. HS256 est imposé, en dur.
 
 **2. La comparaison de signature passe par `hash_equals()`.** Un `===` rend son
-verdict d'autant plus vite que les cha�nes diff�rent t�t, ce qui suffit �
+verdict d'autant plus vite que les chaînes diffèrent tôt, ce qui suffit à
 reconstituer une signature valide octet par octet.
 
-**3. `exp` est obligatoire.** Un jeton sans date d'expiration ne p�rime jamais ;
-il est refus� (`JETON_MALFORME`) plut�t que de se voir accorder une validit�
-perp�tuelle.
+**3. `exp` est obligatoire.** Un jeton sans date d'expiration ne périme jamais ;
+il est refusé (`JETON_MALFORME`) plutôt que de se voir accorder une validité
+perpétuelle.
 
-> **? La charge n'est pas un secret.** Elle est *encod�e*, pas chiffr�e :
-> n'importe qui la lit avec un d�codeur base64. N'y mettez ni mot de passe, ni
-> donn�e personnelle. Mettez-y le strict minimum pour retrouver l'acteur �
+> **⚠ La charge n'est pas un secret.** Elle est *encodée*, pas chiffrée :
+> n'importe qui la lit avec un décodeur base64. N'y mettez ni mot de passe, ni
+> donnée personnelle. Mettez-y le strict minimum pour retrouver l'acteur —
 > typiquement `{"sub": 42}`.
 
-**Un secret vide fait �chouer la construction.** Un secret vide signe tout de
-m�me, silencieusement, et tous les jetons deviennent forgeables. Mieux vaut
-�chouer au d�marrage.
+**Un secret vide fait échouer la construction.** Un secret vide signe tout de
+même, silencieusement, et tous les jetons deviennent forgeables. Mieux vaut
+échouer au démarrage.
 
 **Utilisation**
 
 ```php
 $jwt   = new JetonJwt(getenv('JWT_SECRET'));
 $jeton = $jwt->emettre(['sub' => $identite->id()], 3600);
-// iat et exp sont ajout�s automatiquement
+// iat et exp sont ajoutés automatiquement
 
-$charge = $jwt->verifier($jeton);   // ['sub' => 42, 'iat' => �, 'exp' => �]
+$charge = $jwt->verifier($jeton);   // ['sub' => 42, 'iat' => …, 'exp' => …]
 ```
 
-Sept contr�les de `outils/verification.php` portent sur cette classe, dont
+Sept contrôles de `outils/verification.php` portent sur cette classe, dont
 quatre sur ce qu'elle doit **refuser**.
 
 ---
@@ -217,14 +217,14 @@ final class JournalPdo extends DepotPdo implements JournalInterface
 }
 ```
 
-**R�le** � Journal en base, qui ne fait jamais tomber l'appelant.
+**Rôle** — Journal en base, qui ne fait jamais tomber l'appelant.
 
-**Le `catch (Throwable)` est une promesse, pas une n�gligence.** Le contrat
-(`JournalInterface`) dit que cette m�thode ne l�ve pas ; le `catch` est la
-traduction d'un �chec d'�criture en `false`, pour que l'op�ration m�tier d�j�
-accomplie ne soit pas annul�e par sa propre trace.
+**Le `catch (Throwable)` est une promesse, pas une négligence.** Le contrat
+(`JournalInterface`) dit que cette méthode ne lève pas ; le `catch` est la
+traduction d'un échec d'écriture en `false`, pour que l'opération métier déjà
+accomplie ne soit pas annulée par sa propre trace.
 
-**Sch�ma attendu** � La table doit avoir `acteur_id`, `action`, `detail`,
+**Schéma attendu** — La table doit avoir `acteur_id`, `action`, `detail`,
 `horodatage` :
 
 Le nom de table est un identifiant SQL, pas une valeur paramétrable : le
@@ -243,8 +243,8 @@ CREATE TABLE journal (
 ) ENGINE=InnoDB;
 ```
 
-Si votre sch�ma diff�re, n'adaptez pas la table : �crivez votre propre
-impl�mentation de `JournalInterface`. C'est � cela que sert le contrat.
+Si votre schéma diffère, n'adaptez pas la table : écrivez votre propre
+implémentation de `JournalInterface`. C'est à cela que sert le contrat.
 
 ---
 
@@ -261,22 +261,21 @@ final class SurveillanceTimeout implements SurveillanceInterface
 }
 ```
 
-**R�le** � Garde-temps d�marr� � la construction. PHP 7.3 et les versions
-suivantes utilisent l'horloge monotone `hrtime()`. Sous PHP 7.0 � 7.2, il se
-replie sur `microtime()`, qui peut suivre une correction de l'heure syst�me.
+**Rôle** — Garde-temps démarré à la construction et basé sur l'horloge
+monotone `hrtime()`, qui ne saute pas quand l'heure système est corrigée.
 
-**La marge est le point important.** `tempsRestant()` r�pond `true` tant que
-`ecoule() < limite - marge`. Elle ne dit donc pas � reste-t-il du temps ? � mais
-� reste-t-il **au moins une �tape** de temps ? �.
+**La marge est le point important.** `tempsRestant()` répond `true` tant que
+`ecoule() < limite - marge`. Elle ne dit donc pas « reste-t-il du temps ? » mais
+« reste-t-il **au moins une étape** de temps ? ».
 
-> **?** Une surveillance qui laisse partir un appel sortant � une seconde de la
-> limite se fait couper au milieu. C'est exactement la situation o� l'argent est
-> d�bit� chez le fournisseur sans que la r�ponse soit enregistr�e chez vous.
+> **⚠** Une surveillance qui laisse partir un appel sortant à une seconde de la
+> limite se fait couper au milieu. C'est exactement la situation où l'argent est
+> débité chez le fournisseur sans que la réponse soit enregistrée chez vous.
 
-**R�glez la marge sur la dur�e de l'�tape la plus longue**, pas sur z�ro. Si un
-appel au fournisseur prend jusqu'� huit secondes, la marge est de huit secondes.
+**Réglez la marge sur la durée de l'étape la plus longue**, pas sur zéro. Si un
+appel au fournisseur prend jusqu'à huit secondes, la marge est de huit secondes.
 
-**Utilisation** � `Fabrique::surveillance()` la c�ble sur `max_execution_time` :
+**Utilisation** — `Fabrique::surveillance()` la câble sur `max_execution_time` :
 
 ```php
 $limite = (float) ini_get('max_execution_time');
@@ -297,34 +296,33 @@ final class AuthentificationDifferee implements AuthentificationInterface
 }
 ```
 
-**R�le** � Enveloppe qui retarde la construction du v�ritable authentificateur.
+**Rôle** — Enveloppe qui retarde la construction du véritable authentificateur.
 
-**Ne pas la prendre pour une �l�gance gratuite : elle r�pare un d�faut pr�cis.**
+**Ne pas la prendre pour une élégance gratuite : elle répare un défaut précis.**
 
-La racine de composition c�ble l'authentificateur dans chaque cas d'usage. Si le
-construire exige un d�p�t � donc la base � alors une base injoignable fait
-�chouer l'endpoint **avant** qu'il ait pu examiner la requ�te. Une requ�te sans
-jeton re�oit � erreur interne � au lieu de � token introuvable � : le diagnostic
-rendu au consommateur devient faux, et l'anomalie ne se voit que le jour o� la
+La racine de composition câble l'authentificateur dans chaque cas d'usage. Si le
+construire exige un dépôt — donc la base — alors une base injoignable fait
+échouer l'endpoint **avant** qu'il ait pu examiner la requête. Une requête sans
+jeton reçoit « erreur interne » au lieu de « token introuvable » : le diagnostic
+rendu au consommateur devient faux, et l'anomalie ne se voit que le jour où la
 base tombe.
 
 Avec cette enveloppe, rien n'est construit tant que `identifier()` n'est pas
-appel� � c'est-�-dire tant qu'un cas d'usage n'a pas vraiment besoin de savoir
+appelé — c'est-à-dire tant qu'un cas d'usage n'a pas vraiment besoin de savoir
 qui appelle.
 
-**Utilisation** � toujours via `Fabrique::authentificationDifferee()` :
+**Utilisation** — toujours via `Fabrique::authentificationDifferee()` :
 
 ```php
 return $this->authentificationDifferee(function () {
     return new Authentificateur(
         $this->requete(),
         $this->jetons(),
-        new ResolveurDepot($this->utilisateurs())   // ? touche la base
+        new ResolveurDepot($this->utilisateurs())   // ← touche la base
     );
 });
 ```
 
-**V�rification** � trois contr�les d'auto-test couvrent ce comportement, et la
+**Vérification** — trois contrôles d'auto-test couvrent ce comportement, et la
 fumigation HTTP du squelette le montre de bout en bout : base injoignable,
-r�ponse `400 token introuvable`.
-
+réponse `400 token introuvable`.

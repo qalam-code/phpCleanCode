@@ -1,6 +1,6 @@
 # 6. La racine de composition
 
-`src/Fabrique.php` � **un fichier**, et probablement le plus important du socle.
+`src/Fabrique.php` — **un fichier**, et probablement le plus important du socle.
 
 ---
 
@@ -27,39 +27,39 @@ abstract class Fabrique
 }
 ```
 
-**R�le** � L'endroit o� les impl�mentations concr�tes sont assembl�es et reli�es aux contrats de l'application. Les objets simples de valeur peuvent �tre construits ailleurs ; les d�pendances d'infrastructure restent c�bl�es � cette fronti�re.
+**Rôle** — L'endroit où les implémentations concrètes sont assemblées et reliées aux contrats de l'application. Les objets simples de valeur peuvent être construits ailleurs ; les dépendances d'infrastructure restent câblées à cette frontière.
 
 ---
 
 ## 6.2 Pourquoi concentrer toutes les instanciations
 
-Dans les cas d'usage et le domaine, une classe **re�oit** ses d�pendances et ne fabrique pas ses adaptateurs d'infrastructure.
-Cette discipline a un co�t d'�criture � cette classe grossit � et un b�n�fice
+Dans les cas d'usage et le domaine, une classe **reçoit** ses dépendances et ne fabrique pas ses adaptateurs d'infrastructure.
+Cette discipline a un coût d'écriture — cette classe grossit — et un bénéfice
 qu'aucune autre technique ne donne : tout le reste du code devient testable sans
-base, sans r�seau et sans serveur, parce qu'il suffit de lui passer autre chose.
+base, sans réseau et sans serveur, parce qu'il suffit de lui passer autre chose.
 
-**Lisez cette classe comme le plan du syst�me.** Qui d�pend de qui y est �crit
+**Lisez cette classe comme le plan du système.** Qui dépend de qui y est écrit
 noir sur blanc, en un seul fichier. Sur un projet repris, c'est le premier
-fichier � ouvrir : il dit quels endpoints existent, quel cas d'usage r�pond �
-chacun, et de quoi ce cas d'usage d�pend.
+fichier à ouvrir : il dit quels endpoints existent, quel cas d'usage répond à
+chacun, et de quoi ce cas d'usage dépend.
 
 ---
 
-## 6.3 Deux r�gles � ne pas enfreindre
+## 6.3 Deux règles à ne pas enfreindre
 
-**1. Rien ici n'ouvre de connexion ni n'appelle le r�seau.** On assemble des
+**1. Rien ici n'ouvre de connexion ni n'appelle le réseau.** On assemble des
 objets, on ne travaille pas. `FabriqueConnexion` et `AuthentificationDifferee`
 existent pour cela.
 
-> **?** Le jour o� la fabrique ouvre la base pour se construire, un endpoint qui
-> devait r�pondre � param�tre manquant � r�pond � erreur interne � d�s que la
+> **⚠** Le jour où la fabrique ouvre la base pour se construire, un endpoint qui
+> devait répondre « paramètre manquant » répond « erreur interne » dès que la
 > base est indisponible.
 
-**2. Aucun cas d'usage n'instancie d'infrastructure.** Le jour o� un d�p�t fait
-`new PDO` dans un coin, la racine de composition ment � et le test qui croyait
-travailler en m�moire attaque la base de production.
+**2. Aucun cas d'usage n'instancie d'infrastructure.** Le jour où un dépôt fait
+`new PDO` dans un coin, la racine de composition ment — et le test qui croyait
+travailler en mémoire attaque la base de production.
 
-Ce point se v�rifie m�caniquement :
+Ce point se vérifie mécaniquement :
 
 ```bash
 grep -rn "new PDO\|new .*Pdo(" src/ --include="*.php" | grep -v Fabrique
@@ -67,7 +67,7 @@ grep -rn "new PDO\|new .*Pdo(" src/ --include="*.php" | grep -v Fabrique
 
 ---
 
-## 6.4 `partage()` : m�mo�sation
+## 6.4 `partage()` : mémoïsation
 
 ```php
 private function utilisateurs(): DepotUtilisateurInterface
@@ -78,15 +78,15 @@ private function utilisateurs(): DepotUtilisateurInterface
 }
 ```
 
-Deux cas d'usage c�bl�s dans la m�me requ�te partagent alors le m�me d�p�t, donc
-la m�me connexion � et non deux.
+Deux cas d'usage câblés dans la même requête partagent alors le même dépôt, donc
+la même connexion — et non deux.
 
-**La cl� est une cha�ne libre**, mais elle doit �tre unique : deux services
-partageant la m�me cl� se substituent silencieusement l'un � l'autre. Prenez le
-nom de la m�thode.
+**La clé est une chaîne libre**, mais elle doit être unique : deux services
+partageant la même clé se substituent silencieusement l'un à l'autre. Prenez le
+nom de la méthode.
 
-**`array_key_exists` plut�t que `isset`** : un service qui vaudrait l�gitimement
-`null` serait sinon reconstruit � chaque appel.
+**`array_key_exists` plutôt que `isset`** : un service qui vaudrait légitimement
+`null` serait sinon reconstruit à chaque appel.
 
 ---
 
@@ -131,18 +131,18 @@ final public function connexion(): FabriqueConnexion
 
 Deux niveaux de paresse se superposent, et c'est voulu :
 
-1. `decrireConnexion()` n'est appel�e qu'au premier `connexion()` � l'objet
-   d�crivant la connexion n'est m�me pas construit tant qu'aucun d�p�t n'est
-   c�bl� ;
-2. `FabriqueConnexion::pdo()` n'ouvre la socket qu'� la premi�re requ�te SQL
-   r�ellement ex�cut�e.
+1. `decrireConnexion()` n'est appelée qu'au premier `connexion()` — l'objet
+   décrivant la connexion n'est même pas construit tant qu'aucun dépôt n'est
+   câblé ;
+2. `FabriqueConnexion::pdo()` n'ouvre la socket qu'à la première requête SQL
+   réellement exécutée.
 
-R�sultat : un endpoint qui refuse une requ�te malform�e ne touche jamais la
+Résultat : un endpoint qui refuse une requête malformée ne touche jamais la
 base.
 
 ---
 
-## 6.7 `surveillance()` : r�gl�e sur la configuration du serveur
+## 6.7 `surveillance()` : réglée sur la configuration du serveur
 
 ```php
 public function surveillance(): SurveillanceInterface
@@ -154,16 +154,16 @@ public function surveillance(): SurveillanceInterface
 }
 ```
 
-`max_execution_time` vaut `0` en CLI (pas de limite) : le repli � 30 secondes
-�vite qu'un script en ligne de commande croie avoir un budget infini alors que
-le m�me code tournera sous Apache avec une limite r�elle.
+`max_execution_time` vaut `0` en CLI (pas de limite) : le repli à 30 secondes
+évite qu'un script en ligne de commande croie avoir un budget infini alors que
+le même code tournera sous Apache avec une limite réelle.
 
-Red�finissez cette m�thode si la marge de cinq secondes ne convient pas � votre
-�tape la plus longue.
+Redéfinissez cette méthode si la marge de cinq secondes ne convient pas à votre
+étape la plus longue.
 
 ---
 
-## 6.8 �crire sa fabrique
+## 6.8 Écrire sa fabrique
 
 Le squelette en donne un exemple complet. La structure :
 
@@ -202,7 +202,7 @@ final class Fabrique extends FabriqueBase
         return $routeur;
     }
 
-    // 2. La connexion � d�crite, pas ouverte
+    // 2. La connexion — décrite, pas ouverte
     protected function decrireConnexion(): FabriqueConnexion
     {
         $base = (string) (getenv('DB_BASE') ?: 'exemple');
@@ -210,17 +210,17 @@ final class Fabrique extends FabriqueBase
             'mysql:host=' . (getenv('DB_HOTE') ?: '127.0.0.1') . ';dbname=' . $base . ';charset=utf8mb4',
             (string) getenv('DB_UTILISATEUR'),
             (string) getenv('DB_MOT_DE_PASSE'),
-            $base                                  // ? le USE explicite
+            $base                                  // ← le USE explicite
         );
     }
 
-    // 3. Les cas d'usage � non m�mo�s�s : un par requ�te suffit
+    // 3. Les cas d'usage — non mémoïsés : un par requête suffit
     private function consulterFacture(): ConsulterFacture
     {
         return new ConsulterFacture($this->authentification(), $this->factures());
     }
 
-    // 4. Les services � m�mo�s�s
+    // 4. Les services — mémoïsés
     private function factures(): DepotFactureInterface
     {
         return $this->partage('factures', function () {
@@ -230,14 +230,16 @@ final class Fabrique extends FabriqueBase
 }
 ```
 
-**Cas d'usage non m�mo�s�s, services m�mo�s�s.** Un cas d'usage est bon march� et
-sans �tat ; un d�p�t porte la connexion, il doit �tre unique.
+**Cas d'usage non mémoïsés, services mémoïsés.** Un cas d'usage est bon marché et
+sans état ; un dépôt porte la connexion, il doit être unique.
 
 ---
 
 ## 6.9 La configuration
 
-Le squelette fournit un fichier .env.example. Composer le copie vers .env lors de la creation du projet. Le fichier .env est ignore par Git ; il contient les valeurs propres a chaque environnement.
+Le squelette fournit un fichier `.env.example`. Composer le copie vers `.env`
+lors de la création du projet. Le fichier `.env` est ignoré par Git ; il contient
+les valeurs propres à chaque environnement.
 
     BASE_URI=
     DB_HOTE=127.0.0.1
@@ -246,6 +248,12 @@ Le squelette fournit un fichier .env.example. Composer le copie vers .env lors d
     DB_MOT_DE_PASSE=
     JWT_SECRET=
 
-Le chargeur du squelette lit ce fichier sans dependance externe. Une variable deja fournie par Apache, le vhost ou le systeme reste prioritaire sur .env. En production, definissez les secrets directement dans l'environnement du serveur.
+Le chargeur du squelette lit ce fichier sans dépendance externe. Une variable
+déjà fournie par Apache, le vhost ou le système reste prioritaire sur `.env`.
+En production, définissez les secrets directement dans l'environnement du
+serveur.
 
-JWT_SECRET reste volontairement vide dans le modele. Generez une cle aleatoire et renseignez-la avant d'utiliser l'authentification. Sans cette cle, le squelette refuse de construire le service de jetons ; aucun secret de secours n'est utilise.
+`JWT_SECRET` reste volontairement vide dans le modèle. Générez une clé aléatoire
+et renseignez-la avant d'utiliser l'authentification. Sans cette clé, le
+squelette refuse de construire le service de jetons ; aucun secret de secours
+n'est utilisé.
